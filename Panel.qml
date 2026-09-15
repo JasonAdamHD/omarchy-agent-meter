@@ -338,10 +338,12 @@ Panel {
   // ---------------------------------------------------------------- bar meter
   //
   // The bar shows one limit as a pill-shaped meter with its percentage inside.
-  // `barWindow` picks which: "binding" (the fullest window), "session", or
-  // "weekly". Agents without limits, and vertical bars, fall back to the glyph.
+  // `barWindow` picks which: "session" (the 5-hour window, the default),
+  // "weekly", or "binding" (whichever window is fullest). An agent that has no
+  // limit under the chosen name falls back to the fullest one it does have.
+  // Agents without limits at all, and vertical bars, fall back to the glyph.
 
-  readonly property string barWindow: String(settings && settings.barWindow ? settings.barWindow : "binding").toLowerCase()
+  readonly property string barWindow: String(settings && settings.barWindow ? settings.barWindow : "session").toLowerCase()
   readonly property var barLimit: {
     if (barWindow !== "binding") {
       for (var i = 0; i < limits.length; i++)

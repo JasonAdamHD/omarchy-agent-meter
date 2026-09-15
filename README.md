@@ -16,11 +16,11 @@ model. The bar shows the number at a glance, so you don't have to open it.
 
 - **Meter with the number inside.** The fill carries an inverted copy of the
   label, so the digits stay readable as the fill passes under them.
-- **Tracks the limit that matters.** By default it follows whichever window is
-  fullest (5-hour session or weekly), since that one stops your next prompt.
-  You can pin it to one window instead.
+- **Shows your current session by default.** That's the rolling 5-hour window,
+  the one that decides whether your next prompt goes through right now. You can
+  switch it to the weekly limit, or to whichever window is fullest.
 - **Warns you.** At 90% the meter switches to your theme's urgent color.
-- **Hover for detail**, e.g. `Claude Code · Weekly 49% · resets in 17h`.
+- **Hover for detail**, e.g. `Claude Code · Session 12% · resets in 3h 40m`.
 - **Follows your theme** and hot-reloads like any Omarchy shell plugin.
 - **Works with every agent Omarchy tracks**: Claude Code, Codex, and Fireworks.
   Middle-click switches between them. Agents without rate limits, and vertical
@@ -101,18 +101,20 @@ them with `omarchy bar set`, which hot-reloads.
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `barWindow` | `"binding"` | Which limit the meter shows: `binding` (the fullest), `session`, or `weekly` |
+| `barWindow` | `"session"` | Which limit the meter shows: `session` (the 5-hour window), `weekly`, or `binding` (whichever is fullest) |
 | `refreshIntervalSec` | `900` | How often usage is re-collected, in seconds |
 | `providers` | all enabled | Turn individual agents on or off |
 | `syncMode`, `syncDir` | `"Off"`, `""` | Merge usage from other machines through a synced folder |
 
 ```bash
-omarchy bar set jasonadamhd.agent-meter barWindow session
+omarchy bar set jasonadamhd.agent-meter barWindow weekly
 omarchy bar set jasonadamhd.agent-meter refreshIntervalSec 300 --json
 ```
 
-Numbers need `--json`, otherwise they are saved as strings. Per-agent and sync
-options work exactly as in the built-in Agents widget; see its README in
+Numbers need `--json`, otherwise they are saved as strings. An agent with no
+limit under the chosen name, such as a prepaid account, falls back to the
+fullest limit it does report. Per-agent and sync options work exactly as in the
+built-in Agents widget; see its README in
 `/usr/share/omarchy/shell/plugins/agents/README.md` on your system.
 
 ## Where the numbers come from

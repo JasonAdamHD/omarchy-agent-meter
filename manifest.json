@@ -39,7 +39,7 @@
       "syncDir": "",
       "syncFileName": "",
       "syncDeviceId": "",
-      "barWindow": "binding"
+      "barWindow": "session"
     },
     "schema": [
       {
@@ -88,12 +88,12 @@
         "type": "enum",
         "label": "Bar meter window",
         "options": [
-          "binding",
           "session",
-          "weekly"
+          "weekly",
+          "binding"
         ],
-        "defaultValue": "binding",
-        "description": "Which limit the bar meter shows: the fullest window, the 5-hour session, or the weekly limit."
+        "defaultValue": "session",
+        "description": "Which limit the bar meter shows: the current 5-hour session, the weekly limit, or binding (whichever is fullest)."
       }
     ],
     "defaultSection": "right"
