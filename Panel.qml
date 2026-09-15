@@ -316,10 +316,10 @@ Panel {
   }
 
   // Cheap enough to keep running: it only re-evaluates text bindings, and a
-  // stale "resets in 2h" on a panel that is open is worse than a timer.
+  // stale "resets in 2h" on the panel or the bar tooltip is worse than a timer.
   Timer {
     interval: 30000
-    running: root.opened
+    running: true
     repeat: true
     onTriggered: root.nowMs = Date.now()
   }
@@ -335,16 +335,114 @@ Panel {
     function next(): string { root.selectProvider(root.providerIndex + 1); return "ok" }
   }
 
-  BarIconButton {
+  // ---------------------------------------------------------------- bar meter
+  //
+  // The bar shows one limit as a pill-shaped meter with its percentage inside.
+  // `barWindow` picks which: "binding" (the fullest window), "session", or
+  // "weekly". Agents without limits, and vertical bars, fall back to the glyph.
+
+  readonly property string barWindow: String(settings && settings.barWindow ? settings.barWindow : "binding").toLowerCase()
+  readonly property var barLimit: {
+    if (barWindow !== "binding") {
+      for (var i = 0; i < limits.length; i++)
+        if (limits[i].title.toLowerCase() === barWindow) return limits[i]
+    }
+    return headline
+  }
+  readonly property bool showMeter: !!barLimit && !(bar && bar.vertical)
+  readonly property bool meterAlarming: !!barLimit && barLimit.percent >= 0.9
+
+  function barTooltip() {
+    if (!provider) return ""
+    if (!barLimit) return provider.providerName
+    var text = provider.providerName + " · " + barLimit.title + " " + Math.round(barLimit.percent * 100) + "%"
+    var remainingMs = resetMsFor(barLimit)
+    if (remainingMs > 0) text += " · resets in " + formatDuration(remainingMs)
+    return text
+  }
+
+  WidgetButton {
     id: button
     anchors.fill: parent
     bar: root.bar
     text: "󱚣"
-    active: root.alarming
+    active: root.showMeter ? root.meterAlarming : root.alarming
+    labelVisible: !root.showMeter
+    fontSize: Style.bar.iconFont
+    fixedWidth: root.showMeter ? barMeter.width + scaledHorizontalMargin * 2 : (vertical ? -1 : Style.bar.iconSlot)
+    fixedHeight: vertical ? Style.bar.iconSlot : -1
+    tooltipText: root.barTooltip()
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) root.launchAgent()
       else if (buttonCode === Qt.MiddleButton) root.selectProvider(root.providerIndex + 1)
       else root.toggle()
+    }
+
+    Item {
+      id: barMeter
+      visible: root.showMeter
+      anchors.centerIn: parent
+      width: Style.space(46)
+      height: Math.round(button.barSize * 0.6)
+
+      readonly property real ratio: root.barLimit ? root.clamp(root.barLimit.percent, 0, 1) : 0
+      readonly property color tint: root.meterAlarming ? button.activeColor : button.foreground
+      readonly property string label: root.barLimit ? Math.round(root.barLimit.percent * 100) + "%" : ""
+      readonly property int labelSize: Math.max(8, Math.round(height * 0.7))
+
+      Rectangle {
+        anchors.fill: parent
+        radius: height / 2
+        color: "transparent"
+        border.width: 1
+        border.color: root.alpha(barMeter.tint, 0.6)
+      }
+
+      Text {
+        anchors.fill: parent
+        textFormat: Text.PlainText
+        text: barMeter.label
+        color: barMeter.tint
+        font.family: button.fontFamily
+        font.pixelSize: barMeter.labelSize
+        font.bold: true
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+      }
+
+      // The fill clips a second, inverted copy of the label, so the digits
+      // stay readable where the fill passes under them.
+      Item {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: parent.width * barMeter.ratio
+        clip: true
+
+        Behavior on width {
+          NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
+        }
+
+        Rectangle {
+          width: barMeter.width
+          height: barMeter.height
+          radius: height / 2
+          color: barMeter.tint
+        }
+
+        Text {
+          width: barMeter.width
+          height: barMeter.height
+          textFormat: Text.PlainText
+          text: barMeter.label
+          color: root.bar ? root.bar.background : Color.background
+          font.family: button.fontFamily
+          font.pixelSize: barMeter.labelSize
+          font.bold: true
+          horizontalAlignment: Text.AlignHCenter
+          verticalAlignment: Text.AlignVCenter
+        }
+      }
     }
   }
 
