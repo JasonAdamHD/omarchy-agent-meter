@@ -1,40 +1,104 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.agents",
-  "name": "Agents",
+  "id": "jasonadamhd.agent-meter",
+  "name": "Agent Meter",
   "version": "1.0.0",
-  "author": "Omarchy",
-  "license": "MIT",
-  "description": "Claude Code, Codex, and Fireworks usage, limits, and pace in a native Omarchy bar panel.",
-  "kinds": ["bar-widget"],
+  "author": "JasonAdamHD",
+  "license": "GPL-3.0-or-later",
+  "description": "Claude Code, Codex, and Fireworks usage limits as a progress meter in the Omarchy bar, with the full usage panel one click away.",
+  "kinds": [
+    "bar-widget"
+  ],
   "activation": "on-demand",
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Agents",
-    "description": "One bar icon and one panel: rate-limit meters with pace, today, the last week, and the all-time model breakdown for every subscription.",
+    "displayName": "Agent Meter",
+    "description": "A progress meter with the percentage inside, showing how much of your AI coding limit is used. Click for limits, the last week, and the model breakdown.",
     "category": "AI",
-    "aliases": ["agents", "model-usage"],
+    "aliases": [
+      "agent-meter",
+      "usage-meter"
+    ],
     "allowMultiple": false,
     "defaults": {
       "providers": {
-        "claude": { "enabled": true },
-        "codex": { "enabled": true },
-        "fireworks": { "enabled": true }
+        "claude": {
+          "enabled": true
+        },
+        "codex": {
+          "enabled": true
+        },
+        "fireworks": {
+          "enabled": true
+        }
       },
       "refreshIntervalSec": 900,
       "syncMode": "Off",
       "syncDir": "",
       "syncFileName": "",
-      "syncDeviceId": ""
+      "syncDeviceId": "",
+      "barWindow": "binding"
     },
     "schema": [
-      { "key": "refreshIntervalSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 30, "max": 3600, "step": 30, "defaultValue": 900 },
-      { "key": "syncMode", "type": "enum", "label": "Synced aggregation", "options": ["Off", "On"], "defaultValue": "Off", "description": "When On, write this machine's local usage snapshot and merge snapshots from other machines." },
-      { "key": "syncDir", "type": "path", "label": "Sync folder", "defaultValue": "", "description": "A folder synced by Syncthing, Dropbox, rsync, etc." },
-      { "key": "syncFileName", "type": "string", "label": "Snapshot file name", "defaultValue": "", "description": "Optional. Defaults to <hostname>.json. Use a different file name on each machine, such as laptop.json or desktop.json." },
-      { "key": "syncDeviceId", "type": "string", "label": "Device id", "defaultValue": "", "description": "Optional stable device name used inside synced aggregate snapshots." }
-    ]
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 30,
+        "max": 3600,
+        "step": 30,
+        "defaultValue": 900
+      },
+      {
+        "key": "syncMode",
+        "type": "enum",
+        "label": "Synced aggregation",
+        "options": [
+          "Off",
+          "On"
+        ],
+        "defaultValue": "Off",
+        "description": "When On, write this machine's local usage snapshot and merge snapshots from other machines."
+      },
+      {
+        "key": "syncDir",
+        "type": "path",
+        "label": "Sync folder",
+        "defaultValue": "",
+        "description": "A folder synced by Syncthing, Dropbox, rsync, etc."
+      },
+      {
+        "key": "syncFileName",
+        "type": "string",
+        "label": "Snapshot file name",
+        "defaultValue": "",
+        "description": "Optional. Defaults to <hostname>.json. Use a different file name on each machine, such as laptop.json or desktop.json."
+      },
+      {
+        "key": "syncDeviceId",
+        "type": "string",
+        "label": "Device id",
+        "defaultValue": "",
+        "description": "Optional stable device name used inside synced aggregate snapshots."
+      },
+      {
+        "key": "barWindow",
+        "type": "enum",
+        "label": "Bar meter window",
+        "options": [
+          "binding",
+          "session",
+          "weekly"
+        ],
+        "defaultValue": "binding",
+        "description": "Which limit the bar meter shows: the fullest window, the 5-hour session, or the weekly limit."
+      }
+    ],
+    "defaultSection": "right"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.agents"
   }
 }
