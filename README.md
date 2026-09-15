@@ -1,150 +1,166 @@
-# Agents
+# Agent Meter
 
-One bar icon and one panel for every AI coding subscription on the machine.
-The panel is strictly a display: it watches the usage records that
-`omarchy-agent-usage-update` writes to `~/.local/state/omarchy/agents/usage/`
-and draws whatever appears there. `Panel.qml` owns the bar button and the
-popup; `Main.qml` discovers and watches the records (and handles the optional
-cross-device aggregation); `Agent.qml` is the per-record file watcher.
+An [Omarchy](https://omarchy.org) bar widget showing how much of your AI coding
+limit you've used: a progress meter with the percentage inside it.
 
-## Panel
+![The Agent Meter in the Omarchy bar, reading 49%](docs/meter.png)
 
-- **Hero** — the mark, the tool, and the plan it runs on ("Max 20x", "Pro").
-  Auth and endpoint problems replace the plan line and repeat in a card.
-- **Subscription switch** — one chip per enabled agent (`h`/`l` or click).
-  It appears only when more than one agent is enabled.
-- **Limits** — the percentage of each allowance used, a matching meter, and
-  the time until the session or weekly window resets.
-- **Balance** — prepaid agents report a credit ledger instead of limits:
-  remaining credit, a fuel-gauge meter that drains toward empty, and
-  funded-versus-spent detail.
-- **Tokens by day** — one row per day for the last week: day, bar, tokens, with today
-  bolded at the bottom. Hover today for its prompt and session count.
-- **Tokens by model** — tokens per model with the bar behind each row scaled
-  to the heaviest model,
-  the same way the weekly chart scales to its busiest day. Hover for the
-  input / output / cache split.
+Built on Omarchy's own **Agents** widget. Clicking still opens the same full
+panel: every limit with its reset countdown, tokens by day, and tokens by
+model. The bar shows the number at a glance, so you don't have to open it.
 
-A subscription appears only when it is enabled in settings and has actually
-recorded usage — on this machine or on a synced one. With one such agent
-there is no switch row at all; with none, the module leaves the bar entirely
-rather than sitting there with nothing to say. A CLI installed mid-session
-shows up at the next refresh, so nothing polls the disk waiting for it.
+> **GuideCoded** by [JasonAdamHD](https://github.com/JasonAdamHD) and Claude.
+> Jason directed the idea and the look; Claude wrote the code in Claude Code.
 
-That self-hiding is why the widget ships in the default bar layout: a machine
-that has never run an AI coding agent draws nothing, and the icon arrives on
-its own the first time a scan finds usage. Drop it with
-`omarchy plugin disable omarchy.agents`.
+## Features
 
-## Data
+- **Meter with the number inside.** The fill carries an inverted copy of the
+  label, so the digits stay readable as the fill passes under them.
+- **Tracks the limit that matters.** By default it follows whichever window is
+  fullest (5-hour session or weekly), since that one stops your next prompt.
+  You can pin it to one window instead.
+- **Warns you.** At 90% the meter switches to your theme's urgent color.
+- **Hover for detail**, e.g. `Claude Code · Weekly 49% · resets in 17h`.
+- **Follows your theme** and hot-reloads like any Omarchy shell plugin.
+- **Works with every agent Omarchy tracks**: Claude Code, Codex, and Fireworks.
+  Middle-click switches between them. Agents without rate limits, and vertical
+  bars, fall back to the regular icon.
 
-Each agent is one JSON record in `~/.local/state/omarchy/agents/usage/`,
-written by `omarchy-agent-usage-update`. That command runs one
-`omarchy-agent-usage-<agent>` collector per agent; the widget invokes it
-on its refresh timer and whenever you ask for a refresh, and picks up any
-record that lands in the directory regardless of who wrote it.
+## Requirements
 
-Adding an agent therefore never touches this plugin: ship a collector that
-prints the record contract (see the `claude` and `codex` collectors in
-`bin/`), and the panel gains a tab. An `assets/<id>.svg` mark is optional —
-with an `assets/<id>-light.svg` twin if the mark needs a dark variant for
-light surfaces — and the bar glyph stands in when there is none.
+- Omarchy with the Quickshell-based shell and its built-in Agents widget, which
+  provides the plugin system and the `omarchy-agent-usage-update` collectors
+  this widget reads from. Tested on Omarchy 4.0.3.
+- At least one agent that Omarchy can see: a signed-in Claude Code CLI, Codex,
+  or a Fireworks account. See [Where the numbers come from](#where-the-numbers-come-from).
 
-| Collector | Limits | Local stats |
-|---|---|---|
-| `claude` | Anthropic's OAuth usage endpoint (5-hour session + 7-day weekly) | `~/.claude/projects` transcripts, opencode sessions on an Anthropic provider, plus `stats-cache.json` and `history.jsonl` as fallback |
-| `codex` | The Codex app-server RPC | native Codex CLI session files (plus pi and opencode sessions) |
-| `fireworks` | Estimated prepaid balance: configured funding minus rated account costs | Fireworks billing API, grouped by day and model for the last 30 days |
+## Install
 
-Claude limits need a signed-in CLI; without credentials the panel says so and
-falls back to local stats only. A non-default Claude directory is honored via
-`CLAUDE_CONFIG_DIR`, Codex via `CODEX_HOME`. Fireworks reads
-`FIREWORKS_API_KEY` and `FIREWORKS_ACCOUNT_ID` first, then
-`~/.fireworks/auth.ini` (which `firectl set-api-key` creates), then the key
-opencode stores in `~/.local/share/opencode/auth.json` when Fireworks is
-signed in there.
+There is nothing to build or compile. The widget is plain QML that the Omarchy
+shell loads directly.
 
-### Fireworks balance
-
-The collector first asks the account's `:getBalance` endpoint for the real
-prepaid ledger. That endpoint exists but is permission-gated, and as of
-August 2026 no console-issued API key passes it — Fireworks appears to
-reserve it for the dashboard session. The probe stays because it is cheap
-and the live figure lights up automatically if Fireworks ever opens it to
-keys. Until then the collector falls back to estimating the balance from
-configuration in `~/.config/omarchy/agents/fireworks.json`:
-
-```json
-{
-  "accountId": "",
-  "fundedAmount": 20,
-  "fundedAt": "2026-07-01"
-}
+```bash
+omarchy plugin add https://github.com/JasonAdamHD/omarchy-agent-meter.git --enable
 ```
 
-Set `fundedAmount` to the credits purchased and optionally `fundedAt` to the
-purchase date; with no date, the collector uses the account creation time. It
-subtracts rated account costs and the panel labels the result as estimated.
-For a later top-up, increase `fundedAmount` by the new credit while keeping
-the original `fundedAt`, so both the funding and spend still cover the same
-period. `accountId` only matters when one API key can access several
-accounts. Without a configured `fundedAmount` the tab still shows token
-usage, just no balance. With a live ledger, `fundedAmount` is optional and
-only adds the meter and the spent-of-funded line under the real figure.
+The meter replaces the built-in Agents icon and takes its spot on the bar. Your
+existing Agents settings (refresh interval, sync, enabled providers) carry over.
+If Agents wasn't on your bar, the meter goes into the right section.
 
-## Interactions
+### Manual install
 
-- Bar icon: left = panel, right = launch agent, middle = next subscription.
-- Panel: `h`/`l` switch subscription, `j`/`k` scroll, `r` or Enter refresh,
-  Tab moves to the neighboring bar panel, Esc closes.
-- IPC: `omarchy-shell omarchy.agents <open|close|toggle|refresh|next>`.
+If you'd rather clone it yourself, for example to hack on it:
+
+```bash
+git clone https://github.com/JasonAdamHD/omarchy-agent-meter.git \
+  ~/.config/omarchy/plugins/jasonadamhd.agent-meter
+omarchy-shell shell rescanPlugins
+omarchy plugin enable jasonadamhd.agent-meter
+```
+
+The folder name must match the plugin id, `jasonadamhd.agent-meter`.
+
+### Update
+
+```bash
+omarchy plugin update jasonadamhd.agent-meter
+```
+
+### Uninstall
+
+Switching the built-in back on puts the Agents icon back in the meter's spot:
+
+```bash
+omarchy plugin enable omarchy.agents
+omarchy plugin remove jasonadamhd.agent-meter
+```
+
+## Usage
+
+| Action | What it does |
+| --- | --- |
+| Left-click | Open the usage panel |
+| Right-click | Launch an agent |
+| Middle-click | Switch to the next agent |
+| Hover | Show the window, percentage, and reset countdown |
+
+In the panel, `h`/`l` switch agents, `j`/`k` scroll, `r` or Enter refreshes,
+and Esc closes.
+
+The widget answers to the built-in's IPC target, so existing keybindings keep
+working:
+
+```bash
+omarchy-shell omarchy.agents toggle    # also: open, close, refresh, next
+```
 
 ## Settings
 
-Settings live in the widget's entry in `~/.config/omarchy/shell.json`. The
-top-level keys can be set with
-`omarchy bar set omarchy.agents <key> <value>`:
+Settings live in the widget's entry in `~/.config/omarchy/shell.json`. Change
+them with `omarchy bar set`, which hot-reloads.
 
 | Key | Default | What it does |
-|---|---|---|
-| `refreshIntervalSec` | `900` | How often the usage records regenerate |
-| `syncMode` | `"Off"` | `"On"` writes this machine's snapshot and merges the others |
-| `syncDir` | `""` | A folder synced by Syncthing, Dropbox, rsync, … |
-| `syncFileName` | `<hostname>.json` | This machine's snapshot file |
-| `syncDeviceId` | hostname | Stable device name inside the snapshot |
-
-Numbers need `--json`, or they land in `shell.json` as strings:
+| --- | --- | --- |
+| `barWindow` | `"binding"` | Which limit the meter shows: `binding` (the fullest), `session`, or `weekly` |
+| `refreshIntervalSec` | `900` | How often usage is re-collected, in seconds |
+| `providers` | all enabled | Turn individual agents on or off |
+| `syncMode`, `syncDir` | `"Off"`, `""` | Merge usage from other machines through a synced folder |
 
 ```bash
-omarchy bar set omarchy.agents refreshIntervalSec 300 --json
-omarchy bar set omarchy.agents syncDir '~/Sync/agent-usage'
+omarchy bar set jasonadamhd.agent-meter barWindow session
+omarchy bar set jasonadamhd.agent-meter refreshIntervalSec 300 --json
 ```
 
-Per-agent enablement is nested, and `set` writes its key literally rather
-than walking a dotted path — so pass the whole `providers` object as JSON (or
-edit `shell.json` directly):
+Numbers need `--json`, otherwise they are saved as strings. Per-agent and sync
+options work exactly as in the built-in Agents widget; see its README in
+`/usr/share/omarchy/shell/plugins/agents/README.md` on your system.
+
+## Where the numbers come from
+
+This widget only draws. It collects nothing and makes no network requests
+itself. Omarchy's `omarchy-agent-usage-update` does the collecting: it writes
+one JSON record per agent to `~/.local/state/omarchy/agents/usage/`, and the
+widget watches those files.
+
+- **Claude Code**: session and weekly limits come from Anthropic's usage
+  endpoint via your signed-in CLI. Local token stats come from
+  `~/.claude/projects`.
+- **Codex**: limits come from the Codex app server. Stats come from local
+  session files.
+- **Fireworks**: an estimated prepaid balance from the Fireworks billing API.
+
+## Development
+
+Edit the QML in your plugin folder. The shell reloads it on save. To check the
+manifest before publishing a change:
 
 ```bash
-omarchy bar set omarchy.agents providers '{
-  "claude": { "enabled": true },
-  "codex": { "enabled": false },
-  "fireworks": { "enabled": true }
-}' --json
+omarchy plugin validate ~/.config/omarchy/plugins/jasonadamhd.agent-meter
 ```
 
-`enabled` defaults to `true` for every discovered agent; set it to `false` to
-hide a subscription that is installed. Disabled agents are also skipped when
-the records regenerate.
+Shell logs, including QML errors, are available with:
 
-With `syncMode` on, every `*.json` snapshot in `syncDir` is merged, so today,
-the last 7 days, and the all-time totals cover every machine you code on —
-active days are unioned by date rather than summed. Rate limits stay
-per-account and are never merged. A record may declare `"scope": "account"`
-when its stats are account-global rather than machine-local (Fireworks'
-billing API); those merge by taking the widest value instead of summing, so
-the same account synced from two machines is not counted twice.
+```bash
+quickshell log -n -p /usr/share/omarchy/shell -t 40    # add -f to follow
+```
 
-One caveat on "all-time": the Codex collector only reads native session files
-touched in the last 30 days, and Fireworks requests the last 30 days from its
-billing API, so their totals and day counts cover that window. Claude's cover
-every transcript still on disk.
+| File | Role |
+| --- | --- |
+| `Panel.qml` | Bar meter and popup panel |
+| `Main.qml` | Finds and watches usage records, runs refreshes, handles sync |
+| `Agent.qml` | Watches a single usage record file |
+| `manifest.json` | Plugin id, entry point, defaults, and settings schema |
+
+## License
+
+Agent Meter is free software under the **GNU General Public License v3.0 or
+later** ([LICENSE](LICENSE)). You can use, copy, modify, and share it. If you
+distribute a modified version, you must release its source under the same
+license.
+
+It is based on the Agents plugin from [Omarchy](https://github.com/basecamp/omarchy),
+Copyright (c) David Heinemeier Hansson, used under the MIT License. That
+notice is kept in [LICENSE-OMARCHY](LICENSE-OMARCHY).
+
+The Claude, Codex, and Fireworks marks in `assets/` belong to their respective
+owners and are included only to identify each service.
