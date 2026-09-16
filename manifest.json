@@ -40,7 +40,7 @@
       "syncFileName": "",
       "syncDeviceId": "",
       "barWindow": "session",
-      "activeRefreshIntervalSec": 60
+      "activeRefreshIntervalSec": 300
     },
     "schema": [
       {
@@ -100,11 +100,11 @@
         "key": "activeRefreshIntervalSec",
         "type": "integer",
         "label": "Fast refresh while coding (seconds)",
-        "min": 15,
+        "min": 60,
         "max": 900,
-        "step": 15,
-        "defaultValue": 60,
-        "description": "How often to re-read your limits while an agent CLI is open in a terminal. Uses the cheap limits-only refresh."
+        "step": 30,
+        "defaultValue": 300,
+        "description": "How often to re-read your limits while an agent CLI is open in a terminal. Too low and the usage endpoint rate-limits the checks, which silently freezes the numbers."
       }
     ],
     "defaultSection": "right"

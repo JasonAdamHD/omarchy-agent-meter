@@ -25,8 +25,9 @@ model. The bar shows the number at a glance, so you don't have to open it.
   the one that decides whether your next prompt goes through right now. You can
   switch it to the weekly limit, or to whichever window is fullest.
 - **Keeps up while you code.** With an agent CLI open in a terminal it refreshes
-  every minute. Otherwise it stays on the slow cycle, so an idle machine isn't
-  polling anything. See [How often it updates](#how-often-it-updates).
+  every five minutes instead of every fifteen. Otherwise it stays on the slow
+  cycle, so an idle machine isn't polling anything. See
+  [How often it updates](#how-often-it-updates).
 - **Warns you.** At 90% the meter switches to your theme's urgent color.
 - **Hover for detail**, e.g. `Claude Code · Session 12% · resets in 3h 40m`.
 - **Follows your theme** and hot-reloads like any Omarchy shell plugin.
@@ -106,10 +107,10 @@ omarchy-shell omarchy.agents toggle    # also: open, close, refresh, next
 
 Two cycles run side by side:
 
-- **While you're coding**, every `activeRefreshIntervalSec` (60 by default), the
-  widget re-reads your limits through the collectors' limits-only path. That
-  asks each service for its current windows and reuses the last transcript
-  scan, so it costs a fraction of a second.
+- **While you're coding**, every `activeRefreshIntervalSec` (300 by default),
+  the widget re-reads your limits through the collectors' limits-only path.
+  That asks each service for its current windows and reuses the last
+  transcript scan, so it costs a fraction of a second locally.
 - **Otherwise**, every `refreshIntervalSec` (900 by default), it does the full
   collection: limits plus a fresh walk of your local transcripts for the
   per-day and per-model token stats.
@@ -121,6 +122,25 @@ which these CLIs leave running after you quit, deliberately don't count — only
 a session you actually have open. Opening the panel always refreshes the limits
 too, whatever the cycle is doing.
 
+### Don't set the fast interval too low
+
+Cheap locally is not cheap upstream. Anthropic's usage endpoint rate-limits
+frequent checks, and a 60-second cycle here collected an HTTP 429 within the
+hour. A refused probe is worse than a slow one: Omarchy's collector answers
+from its cache and reports no error, so the meter keeps redrawing the last
+number it managed to fetch and looks perfectly healthy while being stale.
+
+Five minutes has proven sustainable, and the floor is 60 seconds. If your
+numbers ever stop moving, check whether the probe cache is being written:
+
+```bash
+stat -c %y ~/.cache/omarchy/agent-usage/claude-limits.json
+```
+
+A timestamp that stops advancing while
+`~/.local/state/omarchy/agents/usage/claude.json` keeps being rewritten means
+the probes are failing and you're seeing cached figures.
+
 ## Settings
 
 Settings live in the widget's entry in `~/.config/omarchy/shell.json`. Change
@@ -129,14 +149,14 @@ them with `omarchy bar set`, which hot-reloads.
 | Key | Default | What it does |
 | --- | --- | --- |
 | `barWindow` | `"session"` | Which limit the meter shows: `session` (the 5-hour window), `weekly`, or `binding` (whichever is fullest) |
-| `activeRefreshIntervalSec` | `60` | How often to re-read limits while an agent CLI is open in a terminal |
+| `activeRefreshIntervalSec` | `300` | How often to re-read limits while an agent CLI is open in a terminal (minimum 60) |
 | `refreshIntervalSec` | `900` | How often to run the full collection, in seconds |
 | `providers` | all enabled | Turn individual agents on or off |
 | `syncMode`, `syncDir` | `"Off"`, `""` | Merge usage from other machines through a synced folder |
 
 ```bash
 omarchy bar set jasonadamhd.agent-meter barWindow weekly
-omarchy bar set jasonadamhd.agent-meter activeRefreshIntervalSec 30 --json
+omarchy bar set jasonadamhd.agent-meter activeRefreshIntervalSec 600 --json
 ```
 
 Numbers need `--json`, otherwise they are saved as strings. To switch the fast

@@ -185,13 +185,19 @@ Item {
   // That is the cheap route — it asks the endpoint for the windows and reuses
   // the last transcript scan instead of walking every file again.
   //
+  // Cheap locally is not cheap upstream. At 60s this earned an HTTP 429 from
+  // Anthropic's usage endpoint within the hour, and a refused probe is
+  // invisible: the collector answers from its cache and says nothing, so the
+  // meter freezes while looking live. Five minutes is the compromise, and the
+  // floor is a minute so no setting can walk back into the same wall.
+  //
   // The probe counts only processes holding a pts, because the CLIs leave
   // daemons and spare workers behind long after the last session exits and
   // matching those would keep the fast cycle running all day. It matches the
   // process name rather than the command line, so a shell command that merely
   // mentions an agent does not read as one.
 
-  property int activeRefreshIntervalSec: Math.max(15, Number(setting("activeRefreshIntervalSec", 60)))
+  property int activeRefreshIntervalSec: Math.max(60, Number(setting("activeRefreshIntervalSec", 300)))
   property bool agentActive: false
 
   Process {
