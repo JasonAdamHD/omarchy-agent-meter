@@ -39,7 +39,8 @@
       "syncDir": "",
       "syncFileName": "",
       "syncDeviceId": "",
-      "barWindow": "session"
+      "barWindow": "session",
+      "activeRefreshIntervalSec": 60
     },
     "schema": [
       {
@@ -94,6 +95,16 @@
         ],
         "defaultValue": "session",
         "description": "Which limit the bar meter shows: the current 5-hour session, the weekly limit, or binding (whichever is fullest)."
+      },
+      {
+        "key": "activeRefreshIntervalSec",
+        "type": "integer",
+        "label": "Fast refresh while coding (seconds)",
+        "min": 15,
+        "max": 900,
+        "step": 15,
+        "defaultValue": 60,
+        "description": "How often to re-read your limits while an agent CLI is open in a terminal. Uses the cheap limits-only refresh."
       }
     ],
     "defaultSection": "right"

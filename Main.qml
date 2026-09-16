@@ -176,6 +176,46 @@ Item {
   // recent scans in this mode.
   function refreshLimits() { runUpdate("limits") }
 
+  // ------------------------------------------------ fast refresh while coding
+  //
+  // Fifteen minutes is fine for a machine nobody is prompting and far too slow
+  // while you are: the session meter would sit most of an hour behind the
+  // window it draws. So probe for an agent CLI open in a terminal and, while
+  // one is there, take the limits-only path every activeRefreshIntervalSec.
+  // That is the cheap route — it asks the endpoint for the windows and reuses
+  // the last transcript scan instead of walking every file again.
+  //
+  // The probe counts only processes holding a pts, because the CLIs leave
+  // daemons and spare workers behind long after the last session exits and
+  // matching those would keep the fast cycle running all day. It matches the
+  // process name rather than the command line, so a shell command that merely
+  // mentions an agent does not read as one.
+
+  property int activeRefreshIntervalSec: Math.max(15, Number(setting("activeRefreshIntervalSec", 60)))
+  property bool agentActive: false
+
+  Process {
+    id: activityProbe
+    running: false
+    command: ["bash", "-c", "ps -eo tty=,comm= | awk '$1 ~ /^pts\\// && ($2 == \"claude\" || $2 == \"codex\") { found = 1 } END { print found ? \"active\" : \"idle\" }'"]
+
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.agentActive = String(text).indexOf("active") >= 0
+        if (root.agentActive) root.runUpdate("limits")
+      }
+    }
+  }
+
+  Timer {
+    interval: root.activeRefreshIntervalSec * 1000
+    running: true
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: if (!activityProbe.running) activityProbe.running = true
+  }
+
   // ------------------------------------------------------------- providers
 
   // An agent earns a place in the bar and the panel by being switched on in

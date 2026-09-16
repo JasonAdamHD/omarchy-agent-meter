@@ -19,6 +19,9 @@ model. The bar shows the number at a glance, so you don't have to open it.
 - **Shows your current session by default.** That's the rolling 5-hour window,
   the one that decides whether your next prompt goes through right now. You can
   switch it to the weekly limit, or to whichever window is fullest.
+- **Keeps up while you code.** With an agent CLI open in a terminal it refreshes
+  every minute. Otherwise it stays on the slow cycle, so an idle machine isn't
+  polling anything. See [How often it updates](#how-often-it-updates).
 - **Warns you.** At 90% the meter switches to your theme's urgent color.
 - **Hover for detail**, e.g. `Claude Code · Session 12% · resets in 3h 40m`.
 - **Follows your theme** and hot-reloads like any Omarchy shell plugin.
@@ -94,6 +97,25 @@ working:
 omarchy-shell omarchy.agents toggle    # also: open, close, refresh, next
 ```
 
+## How often it updates
+
+Two cycles run side by side:
+
+- **While you're coding**, every `activeRefreshIntervalSec` (60 by default), the
+  widget re-reads your limits through the collectors' limits-only path. That
+  asks each service for its current windows and reuses the last transcript
+  scan, so it costs a fraction of a second.
+- **Otherwise**, every `refreshIntervalSec` (900 by default), it does the full
+  collection: limits plus a fresh walk of your local transcripts for the
+  per-day and per-model token stats.
+
+"While you're coding" means an agent CLI is open in a terminal. The widget
+checks once per fast interval by looking for a `claude` or `codex` process that
+holds a pty, which costs about 10ms. Background daemons and spare workers,
+which these CLIs leave running after you quit, deliberately don't count — only
+a session you actually have open. Opening the panel always refreshes the limits
+too, whatever the cycle is doing.
+
 ## Settings
 
 Settings live in the widget's entry in `~/.config/omarchy/shell.json`. Change
@@ -102,19 +124,21 @@ them with `omarchy bar set`, which hot-reloads.
 | Key | Default | What it does |
 | --- | --- | --- |
 | `barWindow` | `"session"` | Which limit the meter shows: `session` (the 5-hour window), `weekly`, or `binding` (whichever is fullest) |
-| `refreshIntervalSec` | `900` | How often usage is re-collected, in seconds |
+| `activeRefreshIntervalSec` | `60` | How often to re-read limits while an agent CLI is open in a terminal |
+| `refreshIntervalSec` | `900` | How often to run the full collection, in seconds |
 | `providers` | all enabled | Turn individual agents on or off |
 | `syncMode`, `syncDir` | `"Off"`, `""` | Merge usage from other machines through a synced folder |
 
 ```bash
 omarchy bar set jasonadamhd.agent-meter barWindow weekly
-omarchy bar set jasonadamhd.agent-meter refreshIntervalSec 300 --json
+omarchy bar set jasonadamhd.agent-meter activeRefreshIntervalSec 30 --json
 ```
 
-Numbers need `--json`, otherwise they are saved as strings. An agent with no
-limit under the chosen name, such as a prepaid account, falls back to the
-fullest limit it does report. Per-agent and sync options work exactly as in the
-built-in Agents widget; see its README in
+Numbers need `--json`, otherwise they are saved as strings. To switch the fast
+cycle off, set `activeRefreshIntervalSec` to the same value as
+`refreshIntervalSec`. An agent with no limit under the chosen name, such as a
+prepaid account, falls back to the fullest limit it does report. Per-agent and
+sync options work exactly as in the built-in Agents widget; see its README in
 `/usr/share/omarchy/shell/plugins/agents/README.md` on your system.
 
 ## Where the numbers come from
@@ -145,6 +169,10 @@ Shell logs, including QML errors, are available with:
 ```bash
 quickshell log -n -p /usr/share/omarchy/shell -t 40    # add -f to follow
 ```
+
+A plugin rescan can keep drawing the widget instance that is already running,
+which makes a code or settings change look ignored. `omarchy restart shell`
+applies it for certain.
 
 | File | Role |
 | --- | --- |
