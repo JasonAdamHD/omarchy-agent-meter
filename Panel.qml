@@ -374,6 +374,15 @@ Panel {
     fixedWidth: root.showMeter ? barMeter.width + scaledHorizontalMargin * 2 : (vertical ? -1 : Style.bar.iconSlot)
     fixedHeight: vertical ? Style.bar.iconSlot : -1
     tooltipText: root.barTooltip()
+    // The bar copies this string when the pointer enters and then renders its
+    // own copy, which nothing re-reads. A tooltip left open therefore goes
+    // stale while the meter behind it keeps moving, so re-issue it whenever
+    // the text changes under a parked pointer. It cannot simply be a live
+    // binding: the bar surface a third-party widget is handed exposes no way
+    // to update the shown text in place. Re-issuing clears the tooltip and
+    // waits out the 400ms hover delay again, so it blinks once per change —
+    // the alternative is a countdown and a percentage that quietly lie.
+    onTooltipTextChanged: if (tooltipHovered && root.bar) root.bar.showTooltip(button, tooltipText)
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.RightButton) root.launchAgent()
       else if (buttonCode === Qt.MiddleButton) root.selectProvider(root.providerIndex + 1)
