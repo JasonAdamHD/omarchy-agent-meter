@@ -3,7 +3,12 @@
 An [Omarchy](https://omarchy.org) bar widget showing how much of your AI coding
 limit you've used: a progress meter with the percentage inside it.
 
-![The Agent Meter in the Omarchy bar, reading 14% of the 5-hour session window](docs/meter.png)
+![The Agent Meter in the Omarchy bar, reading 23% of the 5-hour session window](docs/meter.png)
+
+Hovering names the window, the percentage, and when it resets — and keeps that
+text current while the pointer stays put:
+
+![Hover text reading "Claude Code · Session 23% · resets in 4h 53m"](docs/hover.png)
 
 Built on Omarchy's own **Agents** widget. Clicking still opens the same full
 panel: every limit with its reset countdown, tokens by day, and tokens by
